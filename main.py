@@ -1,6 +1,51 @@
 #! Script para crear un sample de 1k imagenes con un csv de descripciones compuestas
 # Necesita tener en /dataset/ descargada la data de kaggle (images/, styles/, images.csv, styles.csv)
 
+"""
+Recomendaciones para la base de datos:
+
+-- Almacena la metadata de styles.csv. Los dos equipos leemos de aquí
+CREATE TABLE IF NOT EXISTS productos (
+    id VARCHAR(50) PRIMARY KEY,
+    gender VARCHAR(50),
+    master_category VARCHAR(100),
+    sub_category VARCHAR(100),
+    article_type VARCHAR(50),
+    base_colour VARCHAR(50),
+    season VARCHAR(50),
+    year INT,
+    usage VARCHAR(50),
+    product_display_name TEXT
+);
+
+!!! Ojo, styles.csv tiene registros no sanitizados en comas (es un csv delimitado por comas, pero que algunos registros tienen comas dentro sin tener "")
+!!! Verificar esos casos al cargar (Pasar ',' a ' ')
+
+-- Para los datos visuales (propuesto)
+CREATE TABLE IF NOT EXISTS visual_chunks (
+    id SERIAL PRIMARY KEY,
+    producto_id VARCHAR(50) REFERENCES productos(id) ON DELETE CASCADE,
+    patch_index INT,
+    -- SIFT estándar genera vectores matemáticos de 128 dimensiones
+    descriptor VECTOR(128),
+    -- Columna para guardar la visual word del propio indice invertido
+    visual_word_id INT
+);
+
+-- Para los datos textuales (propuesto)
+CREATE TABLE IF NOT EXISTS text_chunks (
+    id SERIAL PRIMARY KEY,
+    producto_id VARCHAR(50) REFERENCES productos(id) ON DELETE CASCADE,
+    chunk_index INT,
+    contenido_texto TEXT,
+    -- Columna de tipo TSVECTOR necesaria para probar el índice nativo de PostgreSQL
+    vector_nativo TSVECTOR,
+    -- Columnas para el propio pipeline unificado (TF-IDF y Codebook)
+    term_id INT,
+    tf_idf_score FLOAT
+);
+"""
+
 import os
 import shutil
 import json
