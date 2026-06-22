@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS productos (
 );
 
 !!! Ojo, styles.csv tiene registros no sanitizados en comas (es un csv delimitado por comas, pero que algunos registros tienen comas dentro sin tener "")
-!!! Verificar esos casos al cargar (Pasar ',' a ' ')
+!!! Verificar esos casos al cargar (Pasar ',' a ' ' y los " al caracter de espacio)
 
 -- Para los datos visuales (propuesto)
 CREATE TABLE IF NOT EXISTS visual_chunks (
@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS text_chunks (
 """
 
 import os
+import json
+
 from backend.text_search.build_codebook import build_global_codebook
 from backend.text_search.pipeline_textual import SPIMIIndexer
+from backend.text_search.search_engine import TextSearchEngine
 
 DATASET_CSV = "dataset/sample_1k/cleaned_descriptions.csv"
 OUTPUT_DIR = "dataset/sample_1k/"
@@ -71,5 +74,15 @@ def ejecutar_pipeline_textual():
     print("=== PIPELINE TEXTUAL FINALIZADO ===")
 
 if __name__ == "__main__":
-    ejecutar_pipeline_textual()
+    #ejecutar_pipeline_textual()
     # ejecutar_pipeline_visual()
+    CODEBOOK_JSON = "dataset/sample_1k/codebook.json"
+    IDF_JSON = "dataset/sample_1k/idf_scores.json"
+    
+    engine = TextSearchEngine(CODEBOOK_JSON, IDF_JSON)
+    
+    texto_usuario = "Red dress for women"
+    print(f"Buscando: '{texto_usuario}'...")
+    
+    resultados = engine.search(texto_usuario, top_n=3)
+    print(json.dumps(resultados, indent=2))
