@@ -9,3 +9,4 @@ if conn:
     columnas = ['producto_id', 'chunk_index', 'contenido_texto', 'term_id', 'tf_idf_score']
     bulk_insert(conn, 'text_chunks', columnas, datos_texto)
     conn.close()
+    
