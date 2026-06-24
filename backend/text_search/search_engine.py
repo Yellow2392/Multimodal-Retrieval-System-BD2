@@ -3,6 +3,7 @@ import psycopg2
 from collections import Counter
 import os
 import sys
+import re
 
 from .pipeline_textual import TextModules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -17,7 +18,67 @@ class TextSearchEngine:
             
         self.modules = TextModules()
 
-    def search(self, query_string, top_n=5):
+    def search(self, query_string, top_n=5, mode='manual'): # Si es modo nativo usa GIN + tsvector
+        if mode == 'native':
+            return self._search_native(query_string, top_n)
+        else:
+            return self._search_manual(query_string, top_n)
+
+    def _search_native(self, query_string, top_n):
+        # GIN + tsvector
+        clean_text = re.sub(r'[^a-zA-Z\s]', '', query_string.lower())
+        tokens = clean_text.split()
+        if not tokens:
+            return []
+            
+        ts_query_string = ' | '.join(tokens)
+        
+        conn = get_connection()
+        if not conn:
+            return [{"error": "No hay conexión a la base de datos"}]
+
+        cursor = conn.cursor()
+        
+        sql_query = """
+            SELECT 
+                p.id, 
+                p.product_display_name, 
+                p.base_colour,
+                p.master_category,
+                MAX(ts_rank(tc.vector_nativo, to_tsquery('english', %s))) AS similarity_score
+            FROM text_chunks tc
+            JOIN productos p ON p.id = tc.producto_id
+            WHERE tc.vector_nativo @@ to_tsquery('english', %s)
+            GROUP BY p.id, p.product_display_name, p.base_colour, p.master_category
+            ORDER BY similarity_score DESC
+            LIMIT %s;
+        """
+        
+        try:
+            cursor.execute(sql_query, (ts_query_string, ts_query_string, top_n))
+            resultados = cursor.fetchall()
+            
+            response = []
+            for row in resultados:
+                response.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "color": row[2],
+                    "category": row[3],
+                    "score": round(row[4], 4),
+                    "image_url": f"/dataset/images/{row[0]}.jpg"
+                })
+            return response
+            
+        except Exception as e:
+            print(f"Error en la búsqueda nativa: {e}")
+            return []
+        finally:
+            cursor.close()
+            conn.close()
+
+    def _search_manual(self, query_string, top_n):
+        # SPIMI + TF-IDF normalizado
         chunks = self.modules.split_document(query_string)
         if not chunks:
             return []
@@ -47,7 +108,7 @@ class TextSearchEngine:
 
         conn = get_connection()
         if not conn:
-            return {"error": "No hay conexión a la base de datos"}
+            return [{"error": "No hay conexión a la base de datos"}]
 
         cursor = conn.cursor()
         
@@ -96,11 +157,10 @@ class TextSearchEngine:
                     "score": round(row[4], 4),
                     "image_url": f"/dataset/images/{row[0]}.jpg" 
                 })
-                
             return response
             
         except Exception as e:
-            print(f"Error en la búsqueda: {e}")
+            print(f"Error en la búsqueda manual: {e}")
             return []
         finally:
             cursor.close()

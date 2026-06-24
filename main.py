@@ -84,5 +84,10 @@ if __name__ == "__main__":
     texto_usuario = "Red dress for women"
     print(f"Buscando: '{texto_usuario}'...")
     
-    resultados = engine.search(texto_usuario, top_n=3)
-    print(json.dumps(resultados, indent=2))
+    print(f"--- Búsqueda Manual ---")
+    resultados_manual = engine.search(texto_usuario, top_n=3, mode='manual')
+    print(json.dumps(resultados_manual, indent=2))
+    
+    print(f"\n--- Búsqueda Nativa ---")
+    resultados_nativo = engine.search(texto_usuario, top_n=3, mode='native')
+    print(json.dumps(resultados_nativo, indent=2))
