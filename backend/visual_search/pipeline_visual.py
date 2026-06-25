@@ -4,6 +4,7 @@ datos_visuales = [
     # (producto_id, patch_index, descriptor_vector), un array de 128 dimensiones
 ]
 
+
 conn = get_connection()
 if conn:
     columnas = ['producto_id', 'patch_index', 'descriptor']
